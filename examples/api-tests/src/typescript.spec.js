@@ -62,7 +62,11 @@ describe('TypeScript', function () {
     const inversifyUri = rootUri.resolve('../../node_modules/inversify/dts/inversify.d.ts').normalizePath();
     const containerUri = rootUri.resolve('../../node_modules/inversify/dts/container/container.d.ts').normalizePath();
 
+    /** @type {string | undefined} */
+    const autoSave = preferences.get('editor.autoSave', undefined, rootUri.toString());
+
     before(async function () {
+        preferences.set('editor.autoSave', 'off', undefined, rootUri.toString());
         await fileService.create(serverUri, `// @ts-check
 require('reflect-metadata');
 const path = require('path');
@@ -137,6 +141,7 @@ module.exports = (port, host, argv) => Promise.resolve()
     });
 
     after(async function () {
+        preferences.set('editor.autoSave', autoSave, undefined, rootUri.toString());
         await fileService.delete(serverUri, { fromUserGesture: false });
     });
 
@@ -504,7 +509,7 @@ module.exports = (port, host, argv) => Promise.resolve()
         assert.isTrue(contextKeyService.match('editorTextFocus'));
         assert.isFalse(contextKeyService.match('renameInputVisible'));
 
-        const renaming = commands.executeCommand('editor.action.rename');
+        commands.executeCommand('editor.action.rename');
         await waitForAnimation(() => contextKeyService.match('renameInputVisible')
             && document.activeElement instanceof HTMLInputElement
             && document.activeElement.selectionEnd === 'container'.length);
@@ -520,7 +525,9 @@ module.exports = (port, host, argv) => Promise.resolve()
         input.value = 'foo';
         keybindings.dispatchKeyDown('Enter', input);
 
-        await renaming;
+        // @ts-ignore
+        await waitForAnimation(() => editor.getControl().getModel().getWordAtPosition({ lineNumber: 11, column: 7 }).word === 'foo');
+
         assert.isTrue(contextKeyService.match('editorTextFocus'));
         assert.isFalse(contextKeyService.match('renameInputVisible'));
 
